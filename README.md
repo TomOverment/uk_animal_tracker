@@ -135,8 +135,7 @@ throughout the project lifecycle.
 
 ### 🟦 Backlog (Planned)
 
-- Define client brief and project scope  
-- Review dataset provenance and metadata  
+- Define client brief and project scope 
 - Identify analytical questions (spatial, temporal, engagement)  
 - Define mammal grouping strategy  
 - Identify ethical considerations and data limitations  
@@ -147,8 +146,7 @@ throughout the project lifecycle.
 ### 🟨 To Do
 
 - Finalise AI feature set and modelling approach  
-- Prepare training and test datasets  
-- Define evaluation metrics for prediction outputs  
+- Prepare training and test datasets 
 - Draft public-facing explanations of AI behaviour  
 - Prepare Streamlit layout and navigation  
 - Finalise README and documentation  
