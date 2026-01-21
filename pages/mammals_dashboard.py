@@ -233,17 +233,65 @@ def page_groups(df: pd.DataFrame):
 def main():
     df = load_clean_data()
 
+    # -----------------------------
+    # SIDEBAR: Navigation + Group Toggles
+    # -----------------------------
     st.sidebar.header("Navigation")
     page = st.sidebar.radio("Go to", ["Overview", "Map", "Groups"], index=0)
 
-    if page == "Overview":
-        page_overview(df)
-    elif page == "Map":
-        page_map(df)
+    # --- Multi-select group toggles with Select all / Clear ---
+    if "Mammal Group" in df.columns:
+        st.sidebar.divider()
+        st.sidebar.header("Mammal Group Filter")
+
+        groups = sorted(df["Mammal Group"].dropna().unique().tolist())
+
+        # Initialise toggle session state keys once
+        for g in groups:
+            st.session_state.setdefault(f"group_toggle_{g}", False)
+
+        colA, colB = st.sidebar.columns(2)
+        with colA:
+            if st.button("Select all", key="select_all_groups"):
+                for g in groups:
+                    st.session_state[f"group_toggle_{g}"] = True
+        with colB:
+            if st.button("Clear", key="clear_all_groups"):
+                for g in groups:
+                    st.session_state[f"group_toggle_{g}"] = False
+
+        st.sidebar.caption("Toggle one or more groups. If none selected, all groups are shown.")
+
+        # Render toggles in a compact column layout inside the sidebar
+        # (Streamlit sidebar supports columns)
+        cols = st.sidebar.columns(2)  # 2 columns in sidebar; change to 3 if you prefer
+        selected_groups = []
+        for i, g in enumerate(groups):
+            with cols[i % len(cols)]:
+                if st.toggle(g, key=f"group_toggle_{g}"):
+                    selected_groups.append(g)
+
+        # Apply filter
+        if selected_groups:
+            df_view = df[df["Mammal Group"].isin(selected_groups)].copy()
+            st.sidebar.success(f"{len(selected_groups)} group(s) selected")
+        else:
+            df_view = df.copy()
+            st.sidebar.info("No groups selected — showing all")
     else:
-        page_groups(df)
+        df_view = df
+        st.sidebar.warning("Column 'Mammal Group' not found — group filter disabled.")
+
+    # -----------------------------
+    # ROUTING (use df_view everywhere)
+    # -----------------------------
+    if page == "Overview":
+        page_overview(df_view)
+    elif page == "Map":
+        page_map(df_view)
+    else:
+        page_groups(df_view)
 
 
 if __name__ == "__main__":
     main()
-
