@@ -90,13 +90,96 @@ def build_top5_commonnames_per_area(df: pd.DataFrame, top_n: int = 5) -> pd.Data
 
 
 # -----------------------------
+# SIDEBAR FILTERS
+# -----------------------------
+def apply_year_filter(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Sidebar year-range slider. If 'Start date year' missing/invalid, returns df unchanged.
+    """
+    if "Start date year" not in df.columns:
+        st.sidebar.warning("Year filter unavailable (missing 'Start date year').")
+        return df
+
+    years = pd.to_numeric(df["Start date year"], errors="coerce").dropna()
+    if years.empty:
+        st.sidebar.warning("Year filter unavailable (no valid years found).")
+        return df
+
+    years = years.astype(int)
+    min_year, max_year = int(years.min()), int(years.max())
+
+    st.sidebar.subheader("Filters")
+    year_range = st.sidebar.slider(
+        "Year range",
+        min_value=min_year,
+        max_value=max_year,
+        value=(min_year, max_year),
+        step=1,
+        key="year_range_slider"
+    )
+    y0, y1 = year_range
+
+    df2 = df.copy()
+    df2["Start date year"] = pd.to_numeric(df2["Start date year"], errors="coerce")
+    df2 = df2[df2["Start date year"].between(y0, y1)]
+
+    st.sidebar.caption(f"Year filter: {y0}–{y1} | Rows: {len(df2):,}")
+    return df2
+
+
+def apply_group_toggle_filter(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Sidebar mammal-group toggle selector (with Select all / Clear).
+    If no groups selected, returns df unchanged.
+    """
+    if "Mammal Group" not in df.columns:
+        st.sidebar.warning("Column 'Mammal Group' not found — group filter disabled.")
+        return df
+
+    st.sidebar.divider()
+    st.sidebar.header("Mammal Group Filter")
+
+    groups = sorted(df["Mammal Group"].dropna().unique().tolist())
+    if not groups:
+        st.sidebar.info("No group values available.")
+        return df
+
+    # Initialise once
+    for g in groups:
+        st.session_state.setdefault(f"group_toggle_{g}", False)
+
+    colA, colB = st.sidebar.columns(2)
+    with colA:
+        if st.button("Select all", key="select_all_groups"):
+            for g in groups:
+                st.session_state[f"group_toggle_{g}"] = True
+    with colB:
+        if st.button("Clear", key="clear_all_groups"):
+            for g in groups:
+                st.session_state[f"group_toggle_{g}"] = False
+
+    st.sidebar.caption("Toggle one or more groups. If none selected, all groups are shown.")
+
+    cols = st.sidebar.columns(2)
+    selected_groups = []
+    for i, g in enumerate(groups):
+        with cols[i % 2]:
+            if st.toggle(g, key=f"group_toggle_{g}"):
+                selected_groups.append(g)
+
+    if selected_groups:
+        df2 = df[df["Mammal Group"].isin(selected_groups)].copy()
+        st.sidebar.success(f"Group filter: {len(selected_groups)} selected | Rows: {len(df2):,}")
+        return df2
+
+    st.sidebar.info("Group filter: none selected — showing all groups")
+    return df
+
+
+# -----------------------------
 # CHARTS
 # -----------------------------
 def group_pie_chart(df: pd.DataFrame, top_n: int = 5):
-    """
-    Pie chart of Mammal Groups.
-    Hover shows top N Common names within each group (if 'Common name' exists).
-    """
     if "Mammal Group" not in df.columns:
         st.error("Missing required column: 'Mammal Group'")
         return
@@ -108,10 +191,8 @@ def group_pie_chart(df: pd.DataFrame, top_n: int = 5):
         .reset_index(name="Record Count")
     )
 
-    # Default hover text
     group_counts["Top Common names"] = "Top common names unavailable"
 
-    # Add top common names if available
     if "Common name" in df.columns:
         top_species = (
             df.dropna(subset=["Mammal Group", "Common name"])
@@ -164,9 +245,10 @@ def page_overview(df: pd.DataFrame):
     st.dataframe(df.head(200), use_container_width=True)
 
     if "Start date year" in df.columns:
-        year_counts = df["Start date year"].value_counts().sort_index().reset_index()
+        year_series = pd.to_numeric(df["Start date year"], errors="coerce").dropna().astype(int)
+        year_counts = year_series.value_counts().sort_index().reset_index()
         year_counts.columns = ["Year", "Records"]
-        fig = px.line(year_counts, x="Year", y="Records", title="Records by Year (Cleaned Data)")
+        fig = px.line(year_counts, x="Year", y="Records", title="Records by Year (Filtered Data)")
         st.plotly_chart(fig, use_container_width=True)
     else:
         st.warning("Column 'Start date year' not found in the cleaned dataset.")
@@ -183,7 +265,7 @@ def page_map(df: pd.DataFrame):
 
     plot_df = build_plot_df(df)
 
-    # --- ADD: Top 5 Common names per area for hover ---
+    # Top 5 Common names per area for hover
     top5_df = build_top5_commonnames_per_area(df, top_n=5)
     plot_df = plot_df.merge(top5_df, on="Area Code", how="left")
     plot_df["Top 5 species"] = plot_df["Top 5 species"].fillna("No common-name data")
@@ -196,14 +278,13 @@ def page_map(df: pd.DataFrame):
         lon="area_lon",
         size="area_total",
         color="Mammal Group",
-        hover_name="Area Code",  # shows as the header line in hover
+        hover_name="Area Code",
         zoom=4,
         center={"lat": 54.5, "lon": -3},
         height=650,
-        title=f"Dominant Mammal Group per Area Code — Top {TOP_AREAS} Areas",
+        title=f"Dominant Mammal Group per Area Code — Top {TOP_AREAS} Areas (Filtered Data)",
     )
 
-    # Custom hover panel (includes Top 5 species)
     fig.update_traces(
         customdata=plot_df_top[["Mammal Group", "group_count", "area_total", "top_share", "Top 5 species"]].values,
         hovertemplate=(
@@ -217,7 +298,10 @@ def page_map(df: pd.DataFrame):
         )
     )
 
-    fig.update_layout(mapbox_style="open-street-map", margin={"r": 0, "t": 50, "l": 0, "b": 0})
+    fig.update_layout(
+        mapbox_style="open-street-map",
+        margin={"r": 0, "t": 50, "l": 0, "b": 0}
+    )
     st.plotly_chart(fig, use_container_width=True)
     st.caption("Circle size represents observation record volume (reporting activity), not population size.")
 
@@ -233,58 +317,14 @@ def page_groups(df: pd.DataFrame):
 def main():
     df = load_clean_data()
 
-    # -----------------------------
-    # SIDEBAR: Navigation + Group Toggles
-    # -----------------------------
     st.sidebar.header("Navigation")
     page = st.sidebar.radio("Go to", ["Overview", "Map", "Groups"], index=0)
 
-    # --- Multi-select group toggles with Select all / Clear ---
-    if "Mammal Group" in df.columns:
-        st.sidebar.divider()
-        st.sidebar.header("Mammal Group Filter")
+    # Apply BOTH filters (year first, then group)
+    df_view = apply_year_filter(df)
+    df_view = apply_group_toggle_filter(df_view)
 
-        groups = sorted(df["Mammal Group"].dropna().unique().tolist())
-
-        # Initialise toggle session state keys once
-        for g in groups:
-            st.session_state.setdefault(f"group_toggle_{g}", False)
-
-        colA, colB = st.sidebar.columns(2)
-        with colA:
-            if st.button("Select all", key="select_all_groups"):
-                for g in groups:
-                    st.session_state[f"group_toggle_{g}"] = True
-        with colB:
-            if st.button("Clear", key="clear_all_groups"):
-                for g in groups:
-                    st.session_state[f"group_toggle_{g}"] = False
-
-        st.sidebar.caption("Toggle one or more groups. If none selected, all groups are shown.")
-
-        # Render toggles in a compact column layout inside the sidebar
-        # (Streamlit sidebar supports columns)
-        cols = st.sidebar.columns(2)  # 2 columns in sidebar; change to 3 if you prefer
-        selected_groups = []
-        for i, g in enumerate(groups):
-            with cols[i % len(cols)]:
-                if st.toggle(g, key=f"group_toggle_{g}"):
-                    selected_groups.append(g)
-
-        # Apply filter
-        if selected_groups:
-            df_view = df[df["Mammal Group"].isin(selected_groups)].copy()
-            st.sidebar.success(f"{len(selected_groups)} group(s) selected")
-        else:
-            df_view = df.copy()
-            st.sidebar.info("No groups selected — showing all")
-    else:
-        df_view = df
-        st.sidebar.warning("Column 'Mammal Group' not found — group filter disabled.")
-
-    # -----------------------------
-    # ROUTING (use df_view everywhere)
-    # -----------------------------
+    # Routing
     if page == "Overview":
         page_overview(df_view)
     elif page == "Map":
