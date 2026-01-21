@@ -1,5 +1,5 @@
 # Mammal Tracking README
-
+![Mammalian Tracker Logo](assets/images/mamalian_tracker.png)
 ---
 
 ## Fictional Client Brief
@@ -185,7 +185,7 @@ throughout the project lifecycle.
 - Ethical considerations around wildlife location data  
 - Performance constraints with large datasets  
 - Risk of misinterpreting AI outputs as deterministic predictions  
-
+![Dashboard Missuse](assets/images/foxy.png)
 ---
 
 ## Deployment Reminders

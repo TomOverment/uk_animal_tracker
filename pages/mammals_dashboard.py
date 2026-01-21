@@ -25,6 +25,7 @@ def load_clean_data() -> pd.DataFrame:
     df.columns = df.columns.str.strip()
     return df
 
+
 @st.cache_data
 def build_plot_df(df: pd.DataFrame) -> pd.DataFrame:
     area_group_counts = (
@@ -58,6 +59,36 @@ def build_plot_df(df: pd.DataFrame) -> pd.DataFrame:
 
     return top_group_per_area.merge(centroids, on="Area Code")
 
+
+@st.cache_data
+def build_top5_commonnames_per_area(df: pd.DataFrame, top_n: int = 5) -> pd.DataFrame:
+    """
+    Returns a DataFrame: Area Code -> hover string listing top N Common names with counts.
+    Requires columns: 'Area Code' and 'Common name'.
+    """
+    if "Common name" not in df.columns:
+        return pd.DataFrame({"Area Code": [], "Top 5 species": []})
+
+    tmp = (
+        df.dropna(subset=["Area Code", "Common name"])
+        .groupby(["Area Code", "Common name"])
+        .size()
+        .reset_index(name="count")
+        .sort_values(["Area Code", "count"], ascending=[True, False])
+    )
+
+    tmp["rank"] = tmp.groupby("Area Code")["count"].rank(method="first", ascending=False)
+    tmp = tmp[tmp["rank"] <= top_n]
+
+    hover_df = (
+        tmp.groupby("Area Code")
+        .apply(lambda g: "<br>".join([f"{r['Common name']}: {int(r['count']):,}" for _, r in g.iterrows()]))
+        .reset_index(name="Top 5 species")
+    )
+
+    return hover_df
+
+
 # -----------------------------
 # CHARTS
 # -----------------------------
@@ -84,10 +115,10 @@ def group_pie_chart(df: pd.DataFrame, top_n: int = 5):
     if "Common name" in df.columns:
         top_species = (
             df.dropna(subset=["Mammal Group", "Common name"])
-              .groupby(["Mammal Group", "Common name"])
-              .size()
-              .reset_index(name="count")
-              .sort_values(["Mammal Group", "count"], ascending=[True, False])
+            .groupby(["Mammal Group", "Common name"])
+            .size()
+            .reset_index(name="count")
+            .sort_values(["Mammal Group", "count"], ascending=[True, False])
         )
 
         top_species["rank"] = top_species.groupby("Mammal Group")["count"].rank(method="first", ascending=False)
@@ -123,6 +154,7 @@ def group_pie_chart(df: pd.DataFrame, top_n: int = 5):
 
     st.plotly_chart(fig, use_container_width=True)
 
+
 # -----------------------------
 # PAGES
 # -----------------------------
@@ -139,6 +171,7 @@ def page_overview(df: pd.DataFrame):
     else:
         st.warning("Column 'Start date year' not found in the cleaned dataset.")
 
+
 def page_map(df: pd.DataFrame):
     st.subheader("Dominant Mammal Group Map")
 
@@ -149,6 +182,12 @@ def page_map(df: pd.DataFrame):
         return
 
     plot_df = build_plot_df(df)
+
+    # --- ADD: Top 5 Common names per area for hover ---
+    top5_df = build_top5_commonnames_per_area(df, top_n=5)
+    plot_df = plot_df.merge(top5_df, on="Area Code", how="left")
+    plot_df["Top 5 species"] = plot_df["Top 5 species"].fillna("No common-name data")
+
     plot_df_top = plot_df.sort_values("area_total", ascending=False).head(TOP_AREAS)
 
     fig = px.scatter_mapbox(
@@ -157,21 +196,36 @@ def page_map(df: pd.DataFrame):
         lon="area_lon",
         size="area_total",
         color="Mammal Group",
-        hover_name="Mammal Group",
-        hover_data={"Area Code": True, "group_count": True, "area_total": True, "top_share": True},
+        hover_name="Area Code",  # shows as the header line in hover
         zoom=4,
         center={"lat": 54.5, "lon": -3},
         height=650,
         title=f"Dominant Mammal Group per Area Code — Top {TOP_AREAS} Areas",
     )
 
+    # Custom hover panel (includes Top 5 species)
+    fig.update_traces(
+        customdata=plot_df_top[["Mammal Group", "group_count", "area_total", "top_share", "Top 5 species"]].values,
+        hovertemplate=(
+            "<b>Area:</b> %{hovertext}<br>"
+            "<b>Dominant group:</b> %{customdata[0]}<br>"
+            "<b>Dominant group records:</b> %{customdata[1]:,}<br>"
+            "<b>Total records (area):</b> %{customdata[2]:,}<br>"
+            "<b>Dominant share:</b> %{customdata[3]:.1%}<br><br>"
+            "<b>Top 5 species (Common name)</b><br>%{customdata[4]}"
+            "<extra></extra>"
+        )
+    )
+
     fig.update_layout(mapbox_style="open-street-map", margin={"r": 0, "t": 50, "l": 0, "b": 0})
     st.plotly_chart(fig, use_container_width=True)
     st.caption("Circle size represents observation record volume (reporting activity), not population size.")
 
+
 def page_groups(df: pd.DataFrame):
     st.subheader("Group Breakdown")
     group_pie_chart(df, top_n=5)
+
 
 # -----------------------------
 # APP ENTRYPOINT
@@ -189,9 +243,7 @@ def main():
     else:
         page_groups(df)
 
+
 if __name__ == "__main__":
     main()
-
-
-
 
