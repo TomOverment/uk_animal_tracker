@@ -10,9 +10,16 @@ st.title("UK Mammal Engagement Dashboard")
 # PATHS / CONFIG
 # -----------------------------
 ROOT = Path(__file__).resolve().parents[1]
-CLEAN_PATH = ROOT / "jupyter_notebooks" / "outputs" / "mammal_atlas_cleaned.csv"
-ALT_PATH = ROOT / "pages" / "data" / "mammal_atlas_cleaned.csv"
+
+# Deployment-safe: search common locations
+CANDIDATES = [
+    ROOT / "data" / "mammal_atlas_cleaned.csv",
+    ROOT / "pages" / "data" / "mammal_atlas_cleaned.csv",
+    ROOT / "jupyter_notebooks" / "outputs" / "mammal_atlas_cleaned.csv",
+]
+
 TOP_AREAS = 300
+
 
 # -----------------------------
 # DATA LOADING
