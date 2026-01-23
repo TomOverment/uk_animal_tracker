@@ -415,3 +415,63 @@ future reporting activity to engage users with wildlife data responsibly.
 
 ---
 
+## Credits and Acknowledgements
+
+This project was developed as part of the **Data Analytics with Artificial Intelligence Bootcamp** capstone assessment. Special thanks too Code Institute.
+
+---
+
+### Data Sources
+
+- **National Mammal Atlas Project**  
+  Citizen-science mammal observation data used for educational and analytical purposes.  
+  Data was accessed in accordance with public-use and research guidelines and was processed, aggregated, and anonymised for this project.
+
+---
+
+### Tools and Technologies
+
+- **Python** – Core programming language used for data analysis and application development  
+- **Pandas & NumPy** – Data manipulation and numerical analysis  
+- **Matplotlib & Seaborn** – Statistical and exploratory visualisation  
+- **Plotly** – Interactive visualisations for the web dashboard  
+- **Scikit-learn** – Machine learning and statistical modelling  
+- **Streamlit** – Development of the interactive web dashboard  
+- **Jupyter Notebook** – Exploratory analysis, documentation, and statistical validation  
+- **GitHub** – Version control and project management  
+
+---
+
+### AI Assistance
+
+Generative AI tools (including **GPT-based systems**) were used responsibly to support:
+
+- Code ideation and optimisation  
+- Structuring analytical workflows  
+- Drafting and refining documentation and explanatory text  
+- Generating illustrative visual assets used within the dashboard and documentation  
+
+All analytical decisions, model design choices, interpretations, and ethical considerations were made by the project author. AI assistance was used as a **productivity and learning aid**, not as a replacement for human judgement.
+
+---
+
+### Images and Visual Assets
+
+- Some illustrative images used in this project were **generated using GPT-based image generation tools**  
+- These images are used purely for **educational and illustrative purposes**  
+- No copyrighted, proprietary, or sensitive imagery has been included   
+
+---
+
+### Educational Context
+
+This project is an **original academic work** created for assessment purposes.  
+All external tools, libraries, datasets, and generative systems used are acknowledged in line with academic integrity and plagiarism guidelines.
+
+---
+
+### Disclaimer
+
+This dashboard presents **reporting activity trends**, not verified wildlife population data.  
+All visualisations and predictive outputs should be interpreted as **indicative and exploratory**.
+
