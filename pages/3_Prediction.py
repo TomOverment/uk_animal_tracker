@@ -1,3 +1,5 @@
+# app_pages/prediction_page.py
+
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -16,45 +18,43 @@ def render_prediction_page():
     )
 
     # -----------------------------
-    # PATHS / CONFIG
+    # PATHS / CONFIG  (INSIDE function)
     # -----------------------------
-ROOT = Path(__file__).resolve().parents[1]  # repo root on Heroku is /app
+    ROOT = Path(__file__).resolve().parents[1]  # repo root on Heroku is typically /app
 
-CANDIDATES = [
-    ROOT / "data" / "mammal_atlas_cleaned.csv",                 # RECOMMENDED
-    ROOT / "pages" / "data" / "mammal_atlas_cleaned.csv",
-    ROOT / "jupyter_notebooks" / "outputs" / "mammal_atlas_cleaned.csv",
-]
-
+    CANDIDATES = [
+        ROOT / "data" / "mammal_atlas_cleaned.csv",  # ✅ recommended
+        ROOT / "pages" / "data" / "mammal_atlas_cleaned.csv",
+        ROOT / "jupyter_notebooks" / "outputs" / "mammal_atlas_cleaned.csv",
+    ]
 
     # -----------------------------
     # DATA LOADING
     # -----------------------------
-@st.cache_data
-def load_clean_data() -> pd.DataFrame:
-    found = None
-    for p in CANDIDATES:
-        if p.exists():
-            found = p
-            break
+    @st.cache_data
+    def load_clean_data() -> pd.DataFrame:
+        found = next((p for p in CANDIDATES if p.exists()), None)
 
-    if found is None:
-        st.error(
-            "Cleaned dataset not found.\n\nTried:\n- "
-            + "\n- ".join(str(p) for p in CANDIDATES)
-            + "\n\nFix: commit the cleaned CSV to the repo (recommended path: data/mammal_atlas_cleaned.csv)."
-        )
-        st.stop()
+        # Deployment debug (helps you see what Heroku actually has)
+        st.sidebar.caption(f"CWD: {Path.cwd()}")
+        st.sidebar.caption(f"ROOT: {ROOT}")
 
-    df = pd.read_csv(found)
-    df.columns = df.columns.str.strip()
+        if found is None:
+            st.error(
+                "Cleaned dataset not found.\n\nTried:\n- "
+                + "\n- ".join(str(p) for p in CANDIDATES)
+                + "\n\nFix: commit the cleaned CSV to the repo "
+                  "(recommended path: data/mammal_atlas_cleaned.csv)."
+            )
+            st.stop()
 
-    # Visible proof in the deployed app
-    st.sidebar.success("Dataset loaded")
-    st.sidebar.caption(f"Path: {found}")
-    st.sidebar.caption(f"Rows: {len(df):,} | Cols: {df.shape[1]}")
-    return df
+        df = pd.read_csv(found)
+        df.columns = df.columns.str.strip()
 
+        st.sidebar.success("Dataset loaded")
+        st.sidebar.caption(f"Path: {found}")
+        st.sidebar.caption(f"Rows: {len(df):,} | Cols: {df.shape[1]}")
+        return df
 
     # -----------------------------
     # TIME HANDLING
@@ -151,12 +151,10 @@ def load_clean_data() -> pd.DataFrame:
     @st.cache_data
     def train_and_predict_next_for_group(panel: pd.DataFrame, grain: str, mammal_group: str) -> dict:
         group_panel = panel[panel["Mammal Group"] == mammal_group].copy()
-
         if group_panel.empty:
             return {"status": "empty", "message": "No data available for this group."}
 
         data = group_panel.dropna(subset=["y_next"]).copy()
-
         unique_periods = sorted(data["period"].unique())
         if len(unique_periods) < 4:
             return {"status": "too_small", "message": "Not enough time periods to train a forecast model for this group."}
@@ -185,7 +183,7 @@ def load_clean_data() -> pd.DataFrame:
             max_depth=6,
             learning_rate=0.08,
             max_iter=300,
-            random_state=42
+            random_state=42,
         )
         model.fit(X_train, np.log1p(y_train))
 
@@ -203,7 +201,7 @@ def load_clean_data() -> pd.DataFrame:
             return {"status": "empty", "message": "No latest rows available for prediction."}
 
         latest_period = latest_rows["period"].max()
-        next_period = (latest_period + 1)
+        next_period = latest_period + 1
 
         X_next = latest_rows[feats].astype(float)
         pred_next = np.expm1(model.predict(X_next))
@@ -269,35 +267,18 @@ def load_clean_data() -> pd.DataFrame:
     colA, colB = st.columns([2, 1])
 
     with colA:
-        st.subheader("Model summary (plain-English explanation)")
+        st.subheader("Model summary")
         st.write(
             f"""
 **Selected group:** **{selected_group}**  
 **Forecast period:** **{results["next_period"]}** (based on latest observed **{results["latest_period"]}**)  
-**Prediction target:** expected number of *reporting records* for **{selected_group}** per Area Code in the next period.  
 **Time grain:** **{grain}**  
-
-**Validation check (time holdout)**
-- Holdout periods: {", ".join(results["holdout_periods"])}
-- MAE: **{results["mae"]:.2f}** records
-- Training rows: **{results["n_train_rows"]:,}** | Test rows: **{results["n_test_rows"]:,}**
-- Areas predicted: **{results["n_areas"]:,}** | Periods observed: **{results["n_periods"]:,}**
+**Holdout periods:** {", ".join(results["holdout_periods"])}  
+**MAE:** **{results["mae"]:.2f}** records  
 """
         )
-
-        if results["pct"] is not None:
-            direction = "increase" if results["delta"] >= 0 else "decrease"
-            st.write(
-                f"""
-**Overall outlook for {selected_group}:**
-- Latest total: **{results["last_total"]:.0f}**
-- Predicted total: **{results["pred_total"]:.0f}**
-- Expected change: **{results["delta"]:+.0f}** ({results["pct"]:+.1f}%) — overall **{direction}**
-"""
-            )
-
         st.info(
-            "Important: this predicts *reporting activity* (records submitted), not true animal abundance. "
+            "This predicts *reporting activity* (records submitted), not true animal abundance. "
             "Reporting is influenced by observer effort, accessibility, and engagement."
         )
 
@@ -321,7 +302,7 @@ def load_clean_data() -> pd.DataFrame:
             lon="area_lon",
             size="predicted_count",
             color="predicted_count",
-            color_continuous_scale="Reds",
+            color_continuous_scale="Reds",  # ✅ red markers / heat
             hover_name="Area Code",
             hover_data={
                 "Mammal Group": True,
@@ -336,7 +317,6 @@ def load_clean_data() -> pd.DataFrame:
             height=700,
             title=f"Predicted reporting volume per Area Code — {selected_group} — {results['next_period']}",
         )
-
         fig.update_layout(
             mapbox_style="open-street-map",
             margin={"r": 0, "t": 60, "l": 0, "b": 0},
@@ -353,5 +333,3 @@ def load_clean_data() -> pd.DataFrame:
         file_name=f"predicted_reporting_{selected_group}_{results['next_period']}.csv".replace(" ", "_"),
         mime="text/csv",
     )
-
-render_prediction_page()
