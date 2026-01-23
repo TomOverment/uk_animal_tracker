@@ -304,6 +304,7 @@ def render_prediction_page():
             lon="area_lon",
             size="predicted_count",
             color="predicted_count",
+            color_continuous_scale="Reds",
             hover_name="Area Code",
             hover_data={
                 "Mammal Group": True,
