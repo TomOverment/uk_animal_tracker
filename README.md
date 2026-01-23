@@ -75,6 +75,48 @@ actual animal population size.
 
 ---
 
+## Dataset Source, Permissions, and Privacy
+
+### Dataset Source
+
+This project uses data derived from the **National Mammal Atlas Project**, a large-scale
+citizen-science initiative that collects mammal observation records across the United Kingdom.
+
+The dataset is intended for **research, education, and public engagement** and is commonly
+used in ecological analysis and conservation contexts.
+
+**Dataset citation:**  
+National Mammal Atlas Project. *UK Mammal Observation Records*.  
+Accessed for educational and non-commercial research use.
+https://www.kaggle.com/datasets/scarfsman/data-resource-national-mammal-atlas-project
+---
+
+### Public Availability and Usage Rights
+
+The dataset used in this project is sourced from a **publicly accessible biodiversity dataset**
+made available for non-commercial research and educational purposes.
+
+No restricted, proprietary, or confidential data is included in this repository.
+The use of this dataset aligns with the project’s academic and educational objectives.
+
+Where appropriate, the dataset has been **filtered and transformed** to ensure that only
+information necessary for analysis and visualisation is retained.
+
+---
+
+### Data Anonymisation and Privacy Protection
+
+To ensure ethical and responsible data handling:
+
+- No personal information about observers or contributors is included  
+- Exact, sensitive wildlife locations are **aggregated to area-level codes**
+- Species-level data is grouped into **ecological mammal categories**
+- Outputs represent **reporting activity**, not individual observer behaviour  
+
+These measures reduce the risk of identifying individuals or enabling misuse of wildlife data.
+
+---
+
 ## Dashboard Features
 
 The dashboard includes:
@@ -116,6 +158,19 @@ The model choice prioritises:
 - Interpretability  
 - Robustness to uneven reporting patterns  
 - Suitability for non-expert audiences  
+
+---
+
+### Model Evaluation
+
+Model performance was evaluated using **Mean Absolute Error (MAE)** on a
+held-out future time period. This evaluation strategy preserves the
+temporal integrity of the dataset and avoids data leakage by ensuring
+that future observations are not used to predict past values.
+
+MAE was selected due to its interpretability for non-technical audiences,
+as it expresses prediction error in the same units as the target variable
+(number of records).
 
 ---
 
@@ -162,6 +217,12 @@ Practical examples include:
 
 These analyses demonstrate how statistical principles support informed data
 interpretation.
+
+A hypothesis test comparing reporting rates between **bats and carnivores**
+found a **statistically significant difference** (p < 0.05), indicating
+that mammal groups exhibit meaningfully different reporting patterns.
+This supports the use of mammal group aggregation in subsequent analysis
+and modelling.
 
 ---
 
