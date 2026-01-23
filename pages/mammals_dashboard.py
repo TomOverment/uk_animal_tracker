@@ -26,17 +26,27 @@ TOP_AREAS = 300
 # -----------------------------
 @st.cache_data
 def load_clean_data() -> pd.DataFrame:
-    path = CLEAN_PATH if CLEAN_PATH.exists() else ALT_PATH
-    if not path.exists():
+    found_path = None
+    for p in CANDIDATES:
+        if p.exists():
+            found_path = p
+            break
+
+    if found_path is None:
         st.error(
-            f"Cleaned dataset not found.\n\nTried:\n- {CLEAN_PATH}\n- {ALT_PATH}\n\n"
-            "Fix by placing the CSV at one of the above paths."
+            "Cleaned dataset not found.\n\nTried:\n- " + "\n- ".join(str(p) for p in CANDIDATES)
+            + "\n\nFix by committing the CSV to the repo (recommended: data/mammal_atlas_cleaned.csv)."
         )
         st.stop()
 
-    df = pd.read_csv(path)
+    df = pd.read_csv(found_path)
     df.columns = df.columns.str.strip()
+
+    st.sidebar.success(f"Loaded dataset: {found_path.name}")
+    st.sidebar.caption(f"Path: {found_path}")
+    st.sidebar.caption(f"Rows: {len(df):,} | Cols: {df.shape[1]}")
     return df
+
 
 
 @st.cache_data
