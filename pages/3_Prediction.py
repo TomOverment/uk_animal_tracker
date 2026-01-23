@@ -18,26 +18,43 @@ def render_prediction_page():
     # -----------------------------
     # PATHS / CONFIG
     # -----------------------------
-    ROOT = Path(__file__).resolve().parents[1]  # project root
-    CLEAN_PATH = ROOT / "jupyter_notebooks" / "outputs" / "mammal_atlas_cleaned.csv"
-    ALT_PATH = ROOT / "pages" / "data" / "mammal_atlas_cleaned.csv"
+ROOT = Path(__file__).resolve().parents[1]  # repo root on Heroku is /app
+
+CANDIDATES = [
+    ROOT / "data" / "mammal_atlas_cleaned.csv",                 # RECOMMENDED
+    ROOT / "pages" / "data" / "mammal_atlas_cleaned.csv",
+    ROOT / "jupyter_notebooks" / "outputs" / "mammal_atlas_cleaned.csv",
+]
+
 
     # -----------------------------
     # DATA LOADING
     # -----------------------------
-    @st.cache_data
-    def load_clean_data() -> pd.DataFrame:
-        path = CLEAN_PATH if CLEAN_PATH.exists() else ALT_PATH
-        if not path.exists():
-            st.error(
-                f"Cleaned dataset not found.\n\nTried:\n- {CLEAN_PATH}\n- {ALT_PATH}\n\n"
-                "Fix by placing the CSV at one of the above paths."
-            )
-            st.stop()
+@st.cache_data
+def load_clean_data() -> pd.DataFrame:
+    found = None
+    for p in CANDIDATES:
+        if p.exists():
+            found = p
+            break
 
-        df = pd.read_csv(path)
-        df.columns = df.columns.str.strip()
-        return df
+    if found is None:
+        st.error(
+            "Cleaned dataset not found.\n\nTried:\n- "
+            + "\n- ".join(str(p) for p in CANDIDATES)
+            + "\n\nFix: commit the cleaned CSV to the repo (recommended path: data/mammal_atlas_cleaned.csv)."
+        )
+        st.stop()
+
+    df = pd.read_csv(found)
+    df.columns = df.columns.str.strip()
+
+    # Visible proof in the deployed app
+    st.sidebar.success("Dataset loaded")
+    st.sidebar.caption(f"Path: {found}")
+    st.sidebar.caption(f"Rows: {len(df):,} | Cols: {df.shape[1]}")
+    return df
+
 
     # -----------------------------
     # TIME HANDLING
