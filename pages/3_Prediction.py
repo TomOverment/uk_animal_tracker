@@ -1,4 +1,4 @@
-# app_pages/prediction_page.py
+# pages/prediction_page.py
 
 import numpy as np
 import pandas as pd
@@ -18,9 +18,9 @@ def render_prediction_page():
     )
 
     # -----------------------------
-    # PATHS / CONFIG  (INSIDE function)
+    # PATHS / CONFIG  (INSIDE FUNCTION)
     # -----------------------------
-    ROOT = Path(__file__).resolve().parents[1]  # repo root on Heroku is typically /app
+    ROOT = Path(__file__).resolve().parents[1]  # repo root (Heroku usually /app)
 
     CANDIDATES = [
         ROOT / "data" / "mammal_atlas_cleaned.csv",  # ✅ recommended
@@ -35,7 +35,7 @@ def render_prediction_page():
     def load_clean_data() -> pd.DataFrame:
         found = next((p for p in CANDIDATES if p.exists()), None)
 
-        # Deployment debug (helps you see what Heroku actually has)
+        # Deployment debug (shows what Heroku actually sees)
         st.sidebar.caption(f"CWD: {Path.cwd()}")
         st.sidebar.caption(f"ROOT: {ROOT}")
 
@@ -201,7 +201,7 @@ def render_prediction_page():
             return {"status": "empty", "message": "No latest rows available for prediction."}
 
         latest_period = latest_rows["period"].max()
-        next_period = latest_period + 1
+        next_period = latest_period + 1  # Period arithmetic
 
         X_next = latest_rows[feats].astype(float)
         pred_next = np.expm1(model.predict(X_next))
@@ -235,13 +235,12 @@ def render_prediction_page():
         }
 
     # -----------------------------
-    # RUN
+    # RUN PAGE
     # -----------------------------
     df = load_clean_data()
     panel, grain = build_panel(df)
 
     st.sidebar.header("Model Controls")
-
     available_groups = sorted(panel["Mammal Group"].dropna().unique().tolist())
     if not available_groups:
         st.error("No Mammal Group values available in the dataset.")
@@ -255,7 +254,6 @@ def render_prediction_page():
     max_points = st.sidebar.slider("Max points on map", 50, 1000, 300, 50)
 
     results = train_and_predict_next_for_group(panel, grain, selected_group)
-
     if results["status"] != "ok":
         st.warning(results.get("message", "Unable to train/predict for this group."))
         st.stop()
@@ -265,7 +263,6 @@ def render_prediction_page():
     preds_map = preds_view.head(max_points).copy()
 
     colA, colB = st.columns([2, 1])
-
     with colA:
         st.subheader("Model summary")
         st.write(
@@ -333,3 +330,12 @@ def render_prediction_page():
         file_name=f"predicted_reporting_{selected_group}_{results['next_period']}.csv".replace(" ", "_"),
         mime="text/csv",
     )
+
+
+# If Streamlit loads this file as a page, run the page immediately.
+# If you import it elsewhere, you can still call render_prediction_page().
+if __name__ == "__main__":
+    render_prediction_page()
+else:
+    # Streamlit multipage mode imports the file, so we render automatically.
+    render_prediction_page()
