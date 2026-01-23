@@ -19,10 +19,15 @@ TOP_AREAS = 300
 # -----------------------------
 @st.cache_data
 def load_clean_data() -> pd.DataFrame:
-    if not CLEAN_PATH.exists():
-        st.error(f"Cleaned dataset not found at: {CLEAN_PATH}")
+    path = CLEAN_PATH if CLEAN_PATH.exists() else ALT_PATH
+    if not path.exists():
+        st.error(
+            f"Cleaned dataset not found.\n\nTried:\n- {CLEAN_PATH}\n- {ALT_PATH}\n\n"
+            "Fix by placing the CSV at one of the above paths."
+        )
         st.stop()
-    df = pd.read_csv(CLEAN_PATH)
+
+    df = pd.read_csv(path)
     df.columns = df.columns.str.strip()
     return df
 
